@@ -1,0 +1,102 @@
+---
+title: "ProcessVisCluster"
+author: "Katie Rhodes"
+date: "3/2/2021"
+output: html_document
+---
+
+```{r}
+library(Seurat)
+```
+
+load in filtered, normalized basal bone marrow count matrix
+```{r}
+dat<- read.table("/home/klrhodes/TusiTest/GSM2388072_basal_bone_marrow.filtered_normalized_counts.csv.gz", header=T, row.names=1, sep = ",")
+```
+
+check data structure
+```{r}
+dim(dat)
+```
+
+```{r}
+head(dat)
+```
+
+```{r}
+unique(dat$seq_run_id)
+```
+Two sequencing runs. In the paper methods they mention some batch effects likely due to sequencing depth. For now, I'm not going to deal with that-- will check whether it could be causing problems down the road
+
+```{r}
+unique(dat$library_id)
+```
+
+```{r}
+unique(dat$pass_filter)
+```
+These are the already filtered set of cells, so they all pass the filter
+
+I believe genes have already been filtered as well.  lets make it a Seurat object and look at some QC metrics:
+
+```{r}
+#transpose to rows are genes and cells are columns
+dat<- t(dat)
+meta<- dat[1:4,]
+meta<- as.data.frame(t(meta))
+
+obj<- CreateSeuratObject(dat[5:nrow(dat),], meta.data = meta)
+```
+
+```{r}
+head(obj)
+```
+
+check some QC metrics
+```{r}
+obj[['percent.mt']]<- PercentageFeatureSet(obj, pattern = '^mt.')
+VlnPlot(obj, features = c("nCount_RNA", "nFeature_RNA", "percent.mt"), pt.size = 0.2)
+```
+
+So, cells have clearly been filtered for mt percentage (less than 10%). I also don't see obvious signs of doublets in the numbers of counts or features, but I'll check again after clustering. 
+
+I believe these counts are already normalized, so proceed to finding variable features
+```{r}
+obj<- FindVariableFeatures(obj, selection.method = "vst", nfeatures=2000)
+```
+
+```{r}
+#scaling data
+all.genes<- rownames(obj)
+obj<- ScaleData(obj, features=all.genes)
+```
+
+```{r}
+obj<- RunPCA(obj, features=VariableFeatures(obj))
+```
+
+```{r}
+DimPlot(obj, reduction="pca")
+```
+
+```{r}
+ElbowPlot(obj)
+```
+
+I'm gonna move forward with 15 PCs here
+
+```{r}
+obj<- FindNeighbors(obj, dims = 1:15)
+obj<- FindClusters(obj, resolution = 0.5)
+obj<- RunUMAP(obj, dims=1:15)
+```
+```{r}
+DimPlot(obj, reduction="umap")
+```
+
+```{r}
+DimPlot(obj, reduction="umap", group.by = "seq_run_id")
+```
+
+okay yeah so there's the batch effect. I checked and Tusi et al fix this by finding variable features in just the first seq run.  so I'll go back and change that.
+
