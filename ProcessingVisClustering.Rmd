@@ -26,8 +26,7 @@ head(dat)
 ```{r}
 unique(dat$seq_run_id)
 ```
-Two sequencing runs. In the paper methods they mention some batch effects likely due to sequencing depth. For now, I'm not going to deal with that-- will check whether it could be causing problems down the road
-
+Two sequencing runs. In the paper methods they mention some batch effects likely due to sequencing depth.
 ```{r}
 unique(dat$library_id)
 ```
@@ -62,7 +61,9 @@ So, cells have clearly been filtered for mt percentage (less than 10%). I also d
 
 I believe these counts are already normalized, so proceed to finding variable features
 ```{r}
-obj<- FindVariableFeatures(obj, selection.method = "vst", nfeatures=2000)
+#subset to just the first sequencing run to find variable features
+sub<- subset(obj, subset = seq_run_id == "seq_run1")
+sub<- FindVariableFeatures(sub, selection.method = "vst", nfeatures=2000)
 ```
 
 ```{r}
@@ -72,7 +73,8 @@ obj<- ScaleData(obj, features=all.genes)
 ```
 
 ```{r}
-obj<- RunPCA(obj, features=VariableFeatures(obj))
+#using only variable features from the first sequencing run
+obj<- RunPCA(obj, features=VariableFeatures(sub))
 ```
 
 ```{r}
@@ -98,5 +100,71 @@ DimPlot(obj, reduction="umap")
 DimPlot(obj, reduction="umap", group.by = "seq_run_id")
 ```
 
-okay yeah so there's the batch effect. I checked and Tusi et al fix this by finding variable features in just the first seq run.  so I'll go back and change that.
+batch effect looks better!
+
+and check if there might be a doublet cluster
+```{r}
+VlnPlot(obj, features = "nCount_RNA", pt.size =0)
+```
+certain clusters definitely have higher counts. This could be a real effect of cell type-- I'm going to leave it for now. 
+
+now, visualizing marker gene expression
+```{r}
+#HSC marker
+FeaturePlot(obj, features = c("Procr"))
+```
+
+
+```{r}
+#erythroid markers
+FeaturePlot(obj, features = c("Gata1", "Klf1"))
+```
+
+```{r}
+#erythroid markers
+FeaturePlot(obj, features = c("Epor", "Gypa"), ncol=2)
+```
+
+```{r}
+#megakaryocyte markers
+FeaturePlot(obj, features = c("Itga2b", "Pbx1"))
+```
+
+```{r}
+#megakaryocyte markers
+FeaturePlot(obj, features = c("Sdpr", "Vwf"))
+```
+
+```{r}
+#Neutrophil and B cell markers
+FeaturePlot(obj, features = c("Elane", "Cd19"))
+```
+
+```{r}
+#basophil
+FeaturePlot(obj, features = c("Mcpt8", "Prss34"))
+```
+
+So, this obviously doesn't look exactly like the UMAP from the paper, and there might even be cell types missiing because I didn't include the other samples (stressed, fetal liver, flow sorted). I don't know enough about these hematopoietic cells types to know whether I expect basophils to be more abundant in a certain condition, for example. 
+
+but, I can see the erythroid branch and the small megakaryocyte branch, so I'll proceed from here. 
+
+I'm ~1.5 hrs in at this point and haven't done formal trajectory inference (The plan was to convert to loom, move over to a jupyter notebook and run PAGA. If you guys want to see a previous jupyter notebook where I ran PAGA in the EB data, I can send that along!)
+
+For the sake of time, I'll use the expected trajectories, and guess which cluster of cells would have been the branch point from erythroid to megakaryocyte. 
+
+at clustering res 0.5, the megakaryocytes, progenitors, and early erythroid are all 1 cluster, so I need to try a higher resolution:
+
+```{r}
+obj<- FindClusters(obj, resolution = 1.5)
+DimPlot(obj, label=T)
+```
+again check which of these clusters at higher res probably correspond to a cell type
+
+without the trajectories, its tough to say which of these are the real branch point cluster. For now, I'm going to assume that based on the marker gene expression, cluster 6 and res 1.5 is multipotent progenitors, and I am going to assume that cluster 8 is the branch point between erythroid and megakaryocyte. I think this is probably flawed (I think there are a few basophils in cluster 8, the space of the UMAP where I might expect the erythroid/megakaryocyte progenitors to be is a little sparse...) but it'll work for now. 
+
+```{r}
+saveRDS(obj, "/home/klrhodes/TusiTest/PostProcessObj.Rmd")
+```
+
 
