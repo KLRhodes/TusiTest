@@ -1,0 +1,67 @@
+---
+title: "DynamicVarianceTusi"
+author: "Katie Rhodes"
+date: "3/2/2021"
+output: html_document
+---
+```{r}
+library(Seurat)
+library(dplyr)
+library(stats)
+```
+
+```{r}
+obj<- readRDS("/home/klrhodes/TusiTest/PostProcessObj.Rmd")
+```
+
+For this analysis, I'll really only be interested in Transcription Factors. Any gene COULD be involved with fate mechanism, but theres a lot we already know about the action of TFs, plus its (relatively) easy to guess what their downstream effects are. 
+
+I grabbed the go_id information for all genes in this data set using biomaRt (check the biomart markdown)
+
+load biomart info
+```{r}
+info<- read.csv("/home/klrhodes/TusiTest/Tusi_my_genes_infoFromBiomaRt_03022021.csv", header=T, row.names = 1)
+```
+
+```{r}
+head(info)
+```
+
+```{r}
+#keep only genes with go terms for  TFs--  GO:0003700
+
+info_keep<- info[info$GO == "GO:0003700",]
+
+feat_keep<- rownames(obj)[(rownames(obj) %in% info_keep$mgi)]
+
+length(feat_keep)
+```
+
+```{r}
+obj<- subset(obj, features = feat_keep)
+```
+
+```{r}
+Idents(obj)<- 'RNA_snn_res.1.5'
+
+#subset data from clusters of interest
+
+#assumed megakaryocyte and erythroid progenitors
+sub.clust8<- subset(obj, idents = '8')
+
+#early erythroid
+sub.clust10<- subset(obj, idents = '10')
+
+#megakaryocyte
+sub.clust9<- subset(obj, idents = '9')
+
+#MPP
+sub.clust6<- subset(obj, idents = '6')
+```
+
+
+Test to see if variance in each TF gene is different between clusters
+```{r}
+
+```
+
