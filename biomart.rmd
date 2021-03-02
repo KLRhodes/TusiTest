@@ -1,0 +1,41 @@
+---
+title: "Get BioMart Info"
+author: "klrhodes"
+date: "March 2, 2021"
+output: html_document
+---
+```{r}
+library(biomaRt)
+```
+
+
+```{r}
+dat<- read.table("/Users/Katie/Downloads/GSM2388072_basal_bone_marrow.filtered_normalized_counts.csv.gz", header=T, row.names = 1, sep=",")
+my_genes<- colnames(dat)
+```
+
+
+```{r}
+ensembl<- useMart(dataset = "mmusculus_gene_ensembl", biomart= "ensembl")
+```
+
+```{r}
+att<- listAttributes(ensembl)
+#att
+```
+
+```{r}
+mapping<- getBM(attributes= c('ensembl_gene_id', 'entrezgene_id', 'mgi_symbol', "go_id"), filters = 'mgi_symbol', values = my_genes,  mart = ensembl)
+colnames(mapping)<- c("Ensembl", "Entrez", "mgi", "GO")
+```
+
+```{r}
+dim(mapping)
+```
+
+```{r}
+save(mapping, file="/Users/Katie/Downloads/Tusi_my_genes_infoFromBiomaRt_03022021.RData")
+```
+
+
+
