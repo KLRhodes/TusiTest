@@ -34,7 +34,7 @@ dim(mapping)
 ```
 
 ```{r}
-save(mapping, file="/Users/Katie/Downloads/Tusi_my_genes_infoFromBiomaRt_03022021.RData")
+write.csv(mapping, file="/Users/Katie/Downloads/Tusi_my_genes_infoFromBiomaRt_03022021.csv")
 ```
 
 
