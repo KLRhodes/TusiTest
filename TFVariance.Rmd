@@ -62,6 +62,40 @@ sub.clust6<- subset(obj, idents = '6')
 
 Test to see if variance in each TF gene is different between clusters
 ```{r}
+#isolate count matrix for each subset, make a df with a column for cluster id
+clust10<- sub.clust10@assays$RNA@counts #179 cells
+clust9<- sub.clust9@assays$RNA@counts #180 cells
+clust8<- sub.clust8@assays$RNA@counts #225 cells
+clust6<- sub.clust6@assays$RNA@counts #242 cells
 
+cluster<- as.factor(c(rep("10", 179), rep("9", 180), rep("8", 225), rep("6", 242)))
+
+count.df<- as.matrix(cbind(clust10,clust9, clust8, clust6))
+count.df<- t(count.df)
+count.df<- as.data.frame(cbind(cluster, count.df))
+
+count.df$cluster<- as.factor(count.df$cluster)
 ```
+
+now use fligner-killeen to test difference in variance in expression of each gene between clusters
+
+```{r}
+pvals<- NULL
+for (i in 2:(ncol(count.df))){
+  flig<- fligner.test(formula = colnames(count.df)[i]~cluster, count.df)
+  pvals[i-1]<-flig$p.value
+}
+
+pvals
+```
+
+aand they are all so tiny that they round to zero. oop! 
+
+I'm at time now, but here are the next things I would try:
+- see if i can get R to stop rounding to 0 (not sure if this is a rounding issue when I extract the pvalue or an issue in the output of the fligner.test function)
+-pairwise test instead of testing 4 groups at once to see if that reduces p values
+-if still nothing, I might try something even more simplistic, calculating the variance for each gene in each cluster, calculating the pairwise difference between clusters, and then just ranking genes with the greatest increase in variance in the branch-point cluster. If TFs known to be important for fate decisions show up in that group, the others may have a mechanism of interest as well.
+
+  
+
 
